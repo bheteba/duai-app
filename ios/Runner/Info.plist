@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleDisplayName</key><string>دوائي</string>
+<key>NSCameraUsageDescription</key><string>يستخدم التطبيق الكاميرا لتصوير عبوة الدواء.</string>
+<key>NSPhotoLibraryUsageDescription</key><string>يستخدم التطبيق الصور لإضافة صورة عبوة الدواء.</string>
+</dict></plist>
