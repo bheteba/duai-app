@@ -1,58 +1,53 @@
-name: Extract Duai App
+name: Build Duai Android
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  extract:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find ZIP file
-        id: find_zip
-        run: |
-          ZIP=$(find . -maxdepth 1 -type f -iname "*.zip" -print -quit)
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
 
-          if [ -z "$ZIP" ]; then
-            echo "No ZIP file found"
-            exit 1
+      - name: Prepare Android project
+        run: |
+          mkdir -p /tmp/duai_source
+          cp -a lib /tmp/duai_source/
+          cp -a pubspec.yaml /tmp/duai_source/
+
+          if [ -d assets ]; then
+            cp -a assets /tmp/duai_source/
           fi
 
-          echo "Found: $ZIP"
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          flutter create --platforms=android --org com.duai --project-name app build_app
 
-      - name: Extract Flutter project
-        run: |
-          ZIP="${{ steps.find_zip.outputs.zip }}"
+          cp -a /tmp/duai_source/lib build_app/
+          cp /tmp/duai_source/pubspec.yaml build_app/
 
-          mkdir -p extracted
-          unzip -q "$ZIP" -d extracted
-
-          if [ -d "extracted/duai_flutter" ]; then
-            cp -a extracted/duai_flutter/. .
-          else
-            cp -a extracted/. .
+          if [ -d /tmp/duai_source/assets ]; then
+            cp -a /tmp/duai_source/assets build_app/
           fi
 
-          rm -rf extracted
-          rm -f "$ZIP"
+      - name: Get dependencies
+        working-directory: build_app
+        run: flutter pub get
 
-      - name: Save extracted project
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Build APK
+        working-directory: build_app
+        run: flutter build apk --release
 
-          git add .
-
-          if git diff --cached --quiet; then
-            echo "No changes"
-          else
-            git commit -m "Extract Duai Flutter app"
-            git push
-          fi
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: duai-android-apk
+          path: build_app/build/app/outputs/flutter-apk/app-release.apk
