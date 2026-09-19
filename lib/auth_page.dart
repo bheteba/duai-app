@@ -15,6 +15,7 @@ class _AuthPageState extends State<AuthPage> {
 
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
+  final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   final supabase = Supabase.instance.client;
@@ -23,27 +24,15 @@ class _AuthPageState extends State<AuthPage> {
   void dispose() {
     nameController.dispose();
     phoneController.dispose();
+    emailController.dispose();
     passwordController.dispose();
     super.dispose();
   }
 
-  String formatPhone(String phone) {
-    phone = phone.trim();
-
-    if (phone.startsWith('01')) {
-      return '+20${phone.substring(1)}';
-    }
-
-    if (phone.startsWith('+20')) {
-      return phone;
-    }
-
-    return phone;
-  }
-
   Future<void> submit() async {
     final name = nameController.text.trim();
-    final phone = formatPhone(phoneController.text);
+    final phone = phoneController.text.trim();
+    final email = emailController.text.trim();
     final password = passwordController.text;
 
     if (!isLogin && name.isEmpty) {
@@ -51,7 +40,12 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
-    if (phone.isEmpty) {
+    if (email.isEmpty || !email.contains('@')) {
+      showMessage('اكتب بريدًا إلكترونيًا صحيحًا');
+      return;
+    }
+
+    if (!isLogin && phone.isEmpty) {
       showMessage('اكتب رقم الهاتف');
       return;
     }
@@ -73,21 +67,21 @@ class _AuthPageState extends State<AuthPage> {
     try {
       if (isLogin) {
         await supabase.auth.signInWithPassword(
-          phone: phone,
+          email: email,
           password: password,
         );
 
         if (!mounted) return;
 
         showMessage('تم تسجيل الدخول بنجاح');
-
         Navigator.pop(context);
       } else {
         final response = await supabase.auth.signUp(
-          phone: phone,
+          email: email,
           password: password,
           data: {
             'name': name,
+            'phone': phone,
           },
         );
 
@@ -98,17 +92,15 @@ class _AuthPageState extends State<AuthPage> {
           Navigator.pop(context);
         } else {
           showMessage(
-            'تم إنشاء الحساب. تحقق من رمز التحقق المرسل إلى هاتفك.',
+            'تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتفعيل الحساب.',
           );
         }
       }
     } on AuthException catch (error) {
       if (!mounted) return;
-
       showMessage(error.message);
     } catch (error) {
       if (!mounted) return;
-
       showMessage('حدث خطأ، حاول مرة أخرى');
     } finally {
       if (mounted) {
@@ -177,16 +169,33 @@ class _AuthPageState extends State<AuthPage> {
                 ),
 
                 const SizedBox(height: 16),
+
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  textDirection: TextDirection.ltr,
+                  decoration: InputDecoration(
+                    labelText: 'رقم الهاتف',
+                    hintText: '01xxxxxxxxx',
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
               ],
 
               TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
                 textDirection: TextDirection.ltr,
+                textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
-                  labelText: 'رقم الهاتف',
-                  hintText: '01xxxxxxxxx',
-                  prefixIcon: const Icon(Icons.phone_outlined),
+                  labelText: 'البريد الإلكتروني',
+                  hintText: 'example@email.com',
+                  prefixIcon: const Icon(Icons.email_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
