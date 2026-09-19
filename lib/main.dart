@@ -1,7 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_page.dart';
 
-void main() {
+const String supabaseUrl = 'https://ddyrfoqiqzavhpwpgtqz.supabase.co';
+const String supabasePublishableKey =
+    'sb_publishable_9NeSHNI82SlQgrdtGDI1tA_lm_ho7zV';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabasePublishableKey,
+  );
+
   runApp(const DuaiApp());
 }
 
@@ -94,4 +106,477 @@ class HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 15),
+            const Text(
+              'مرحبًا بك في دوائي 💚',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'ساعد غيرك واستفد من الأدوية المتاحة بطريقة منظمة.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 25),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(
+                      Icons.medication_outlined,
+                      size: 55,
+                      color: Color(0xFF159447),
+                    ),
+                    const SizedBox(height: 15),
+                    const Text(
+                      'ابحث عن دواء',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'ابحث عن الأدوية المتاحة بالقرب منك.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 15),
+                    FilledButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.search),
+                      label: const Text('ابدأ البحث'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(
+                      Icons.volunteer_activism_outlined,
+                      size: 50,
+                      color: Color(0xFF159447),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'لديك دواء زائد؟',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'يمكنك تسجيل الدواء ليظهر للأشخاص الذين يبحثون عنه.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 15),
+                    OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.add),
+                      label: const Text('إضافة دواء'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SearchTab extends StatefulWidget {
+  const SearchTab({super.key});
+
+  @override
+  State<SearchTab> createState() => _SearchTabState();
+}
+
+class _SearchTabState extends State<SearchTab> {
+  final TextEditingController controller = TextEditingController();
+
+  final List<String> medicines = [
+    'باراسيتامول',
+    'بانادول',
+    'كونجستال',
+    'أوجمنتين',
+    'فنتولين',
+    'كتافلام',
+  ];
+
+  List<String> filteredMedicines = [];
+
+  @override
+  void initState() {
+    super.initState();
+    filteredMedicines = medicines;
+  }
+
+  void search(String value) {
+    setState(() {
+      filteredMedicines = medicines
+          .where(
+            (medicine) =>
+                medicine.contains(value.trim()),
+          )
+          .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'البحث عن دواء',
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: controller,
+              onChanged: search,
+              decoration: InputDecoration(
+                hintText: 'اكتب اسم الدواء',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: filteredMedicines.isEmpty
+                  ? const Center(
+                      child: Text('لا توجد نتائج'),
+                    )
+                  : ListView.builder(
+                      itemCount: filteredMedicines.length,
+                      itemBuilder: (context, index) {
+                        return Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.medication),
+                            ),
+                            title: Text(
+                              filteredMedicines[index],
+                            ),
+                            subtitle:
+                                const Text('دواء متاح'),
+                            trailing: const Icon(
+                              Icons.arrow_back_ios,
+                              size: 16,
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      MedicineDetailsPage(
+                                    medicine:
+                                        filteredMedicines[
+                                            index],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MedicineDetailsPage extends StatelessWidget {
+  final String medicine;
+
+  const MedicineDetailsPage({
+    super.key,
+    required this.medicine,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('تفاصيل الدواء'),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(
+                Icons.medication_outlined,
+                size: 90,
+                color: Color(0xFF159447),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                medicine,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(18),
+                  child: Column(
+                    children: [
+                      Text('الحالة: متاح'),
+                      SizedBox(height: 10),
+                      Text('سيتم التحقق من بيانات الدواء قبل إتمام الطلب.'),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              FilledButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('تم تسجيل طلبك بنجاح'),
+                    ),
+                  );
+                },
+                child: const Text('طلب الدواء'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AddMedicineTab extends StatelessWidget {
+  const AddMedicineTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'إضافة دواء',
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 25),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'اسم الدواء',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'الكمية',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'تاريخ انتهاء الصلاحية',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+            ),
+            const SizedBox(height: 25),
+            FilledButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'سيتم حفظ الدواء بعد ربط قاعدة البيانات.',
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.save),
+              label: const Text('إضافة الدواء'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RequestsTab extends StatelessWidget {
+  const RequestsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'طلباتي',
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 25),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(25),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.assignment_outlined,
+                      size: 70,
+                      color: Colors.grey.shade500,
+                    ),
+                    const SizedBox(height: 15),
+                    const Text(
+                      'لا توجد طلبات حاليًا',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AccountTab extends StatelessWidget {
+  const AccountTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'حسابي',
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 25),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const CircleAvatar(
+                      radius: 40,
+                      child: Icon(
+                        Icons.person,
+                        size: 45,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Text(
+                      user?.email ?? 'لم يتم تسجيل الدخول',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AuthPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.login),
+              label: Text(
+                user == null ? 'تسجيل الدخول' : 'إدارة الحساب',
+              ),
+            ),
+            if (user != null) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Supabase.instance.client.auth.signOut();
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم تسجيل الخروج'),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('تسجيل الخروج'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
