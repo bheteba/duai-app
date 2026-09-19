@@ -7,14 +7,3 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-      - run: flutter create --platforms=android --org com.duai duai_build
-      - run: cp lib/main.dart duai_build/lib/main.dart
-      - run: flutter build apk --release
-        working-directory: duai_build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: duai-android-apk
-          path: duai_build/build/app/outputs/flutter-apk/app-release.apk
