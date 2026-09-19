@@ -59,16 +59,11 @@ class DuaiApp extends StatelessWidget {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(
-              color: Color(0xFFE2ECE8),
-            ),
+            borderSide: const BorderSide(color: Color(0xFFE2ECE8)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(
-              color: green,
-              width: 1.5,
-            ),
+            borderSide: const BorderSide(color: green, width: 1.5),
           ),
         ),
       ),
@@ -660,10 +655,14 @@ class _HomePageState extends State<HomePage> {
   Future<void> _fetchMedicines() async {
     setState(() => _loading = true);
     try {
-      final response = await supabase?.from('medicines').select().order('created_at', ascending: false);
+      final response = await supabase
+          ?.from('medicines')
+          .select()
+          .order('created_at', ascending: false);
       if (response != null && mounted) {
         setState(() {
-          _medicines = (response as List).map((e) => Medicine.fromJson(e)).toList();
+          _medicines =
+              (response as List).map((e) => Medicine.fromJson(e)).toList();
         });
       }
     } catch (_) {
@@ -961,7 +960,8 @@ class _SearchPageState extends State<SearchPage> {
 
       if (response != null && mounted) {
         setState(() {
-          _results = (response as List).map((e) => Medicine.fromJson(e)).toList();
+          _results =
+              (response as List).map((e) => Medicine.fromJson(e)).toList();
         });
       }
     } catch (_) {
@@ -1051,7 +1051,8 @@ class MedicineDetailsPage extends StatelessWidget {
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.medication, size: 90, color: green),
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.medication, size: 90, color: green),
               ),
             )
           else
@@ -1138,7 +1139,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
   final quantity = TextEditingController();
   final expiry = TextEditingController();
   final area = TextEditingController();
-  
+
   XFile? _pickedXFile;
 
   @override
@@ -1153,7 +1154,8 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final picked =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (picked != null) {
       setState(() {
         _pickedXFile = picked;
@@ -1176,12 +1178,14 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
     if (kIsWeb) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Image.network(_pickedXFile!.path, fit: BoxFit.cover, width: double.infinity),
+        child: Image.network(_pickedXFile!.path,
+            fit: BoxFit.cover, width: double.infinity),
       );
     } else {
       return ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Image.file(File(_pickedXFile!.path), fit: BoxFit.cover, width: double.infinity),
+        child: Image.file(File(_pickedXFile!.path),
+            fit: BoxFit.cover, width: double.infinity),
       );
     }
   }
@@ -1417,7 +1421,8 @@ class _VerifyPageState extends State<VerifyPage> {
               height: 52,
               child: FilledButton(
                 onPressed: loading ? null : publish,
-                child: Text(loading ? 'جارٍ النشر والرفع...' : 'نشر الدواء الآن'),
+                child:
+                    Text(loading ? 'جارٍ النشر والرفع...' : 'نشر الدواء الآن'),
               ),
             ),
           ],
@@ -1544,7 +1549,7 @@ class _RequestsPageState extends State<RequestsPage> {
 
       if (response != null && mounted) {
         setState(() {
-          _requests = List<Map<String, dynamic>>.from(response);
+          _requests = List<Map<String, dynamic>>::from(response);
         });
       }
     } catch (_) {
