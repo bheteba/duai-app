@@ -3,35 +3,25 @@ name: Build Duai Android
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      - name: Create Flutter project
-        run: flutter create --platforms=android --org com.duai duai_build
+      - run: flutter create --platforms=android --org com.duai duai_build
 
-      - name: Copy app code
-        run: cp lib/main.dart duai_build/lib/main.dart
+      - run: cp lib/main.dart duai_build/lib/main.dart
 
-      - name: Build APK
-        working-directory: duai_build
-        run: |
-          flutter pub get
-          flutter build apk --release
+      - working-directory: duai_build
+        run: flutter build apk --release
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: duai-android-apk
           path: duai_build/build/app/outputs/flutter-apk/app-release.apk
