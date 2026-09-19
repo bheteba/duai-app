@@ -1,4 +1,4 @@
-name: Build Duai APK
+name: Build Duai
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
           flutter-version: '3.35.0'
           channel: stable
 
-      - name: Get dependencies
+      - name: Get Dependencies
         run: flutter pub get
 
       - name: Build APK
@@ -29,5 +29,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: duai-android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk ولا
+          name: duai-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
