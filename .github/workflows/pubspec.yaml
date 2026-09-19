@@ -20,6 +20,9 @@ jobs:
           flutter-version: '3.35.0'
           channel: stable
 
+      - name: Restore Android project
+        run: flutter create --platforms=android --project-name=duai --org=com.duai .
+
       - name: Get Dependencies
         run: flutter pub get
 
