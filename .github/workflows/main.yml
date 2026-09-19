@@ -1,7 +1,6 @@
 name: Build Duai Android
 
-on:
-  workflow_dispatch:
+on: [workflow_dispatch]
 
 permissions:
   contents: read
@@ -11,7 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Setup Flutter
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.35.0'
