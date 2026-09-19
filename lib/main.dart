@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
 
@@ -15,7 +19,7 @@ Future<void> main() async {
   runApp(const DuaiApp());
 }
 
-final SupabaseClient? supabase =
+SupabaseClient? get supabase =>
     SupabaseConfig.isConfigured ? Supabase.instance.client : null;
 
 const Color green = Color(0xFF079B70);
@@ -30,6 +34,13 @@ class DuaiApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'دوائي',
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: green),
@@ -71,47 +82,51 @@ class DuaiApp extends StatelessWidget {
 // ============================================================
 
 class Medicine {
+  final String? id;
   final String name;
   final String strength;
   final String qty;
   final String expiry;
   final String area;
   final bool free;
+  final String? imageUrl;
 
   const Medicine({
+    this.id,
     required this.name,
     required this.strength,
     required this.qty,
     required this.expiry,
     required this.area,
     this.free = false,
+    this.imageUrl,
   });
-}
 
-final List<Medicine> medicines = [
-  Medicine(
-    name: 'Augmentin',
-    strength: '625 mg',
-    qty: '2 شرائط',
-    expiry: '08/2027',
-    area: 'مدينة نصر - القاهرة',
-  ),
-  Medicine(
-    name: 'Panadol',
-    strength: '500 mg',
-    qty: '1 شريط',
-    expiry: '06/2028',
-    area: 'مصر الجديدة - القاهرة',
-    free: true,
-  ),
-  Medicine(
-    name: 'Vitamin C',
-    strength: '1000 mg',
-    qty: '3 شرائط',
-    expiry: '11/2027',
-    area: 'المعادي - القاهرة',
-  ),
-];
+  factory Medicine.fromJson(Map<String, dynamic> json) {
+    return Medicine(
+      id: json['id']?.toString(),
+      name: json['name'] ?? '',
+      strength: json['strength'] ?? '',
+      qty: json['qty'] ?? '',
+      expiry: json['expiry'] ?? '',
+      area: json['area'] ?? '',
+      free: json['free'] ?? false,
+      imageUrl: json['image_url'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'strength': strength,
+      'qty': qty,
+      'expiry': expiry,
+      'area': area,
+      'free': free,
+      'image_url': imageUrl,
+    };
+  }
+}
 
 // ============================================================
 // AUTH GATE
@@ -129,7 +144,7 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<AuthState>(
       stream: supabase!.auth.onAuthStateChange,
       builder: (context, snapshot) {
-        final session = supabase!.auth.currentSession;
+        final session = snapshot.data?.session ?? supabase!.auth.currentSession;
 
         if (session != null) {
           return const AppShell();
@@ -150,43 +165,37 @@ class BackendSetupPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Text(
-                    '💊',
-                    style: TextStyle(fontSize: 70),
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text('💊', style: TextStyle(fontSize: 70)),
+                SizedBox(height: 8),
+                Text(
+                  'دوائي',
+                  style: TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    color: green,
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'دوائي',
-                    style: TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w900,
-                      color: green,
-                    ),
-                  ),
-                  SizedBox(height: 14),
-                  Text(
-                    'شارك الفائض، وابحث عما تحتاج',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'بيانات Supabase لم تتم إضافتها بعد.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
+                ),
+                SizedBox(height: 14),
+                Text(
+                  'شارك الفائض، وابحث عما تحتاج',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'يرجى إضافة بيانات Supabase داخل ملف supabase_config.dart',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
             ),
           ),
         ),
@@ -241,13 +250,11 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on AuthException catch (e) {
       if (!mounted) return;
-
       setState(() {
         error = e.message;
       });
     } catch (_) {
       if (!mounted) return;
-
       setState(() {
         error = 'حدث خطأ في الاتصال بالخادم';
       });
@@ -262,99 +269,93 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  const Text(
-                    '💊',
-                    style: TextStyle(fontSize: 75),
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Text('💊', style: TextStyle(fontSize: 75)),
+                const Text(
+                  'دوائي',
+                  style: TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    color: green,
                   ),
-                  const Text(
-                    'دوائي',
-                    style: TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w900,
-                      color: green,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'شارك الفائض، وابحث عما تحتاج',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+                TextField(
+                  controller: email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'البريد الإلكتروني',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: password,
+                  obscureText: obscure,
+                  decoration: InputDecoration(
+                    labelText: 'كلمة المرور',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          obscure = !obscure;
+                        });
+                      },
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'شارك الفائض، وابحث عما تحتاج',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 32),
-                  TextField(
-                    controller: email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'البريد الإلكتروني',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                  ),
+                ),
+                if (error != null) ...[
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: password,
-                    obscureText: obscure,
-                    decoration: InputDecoration(
-                      labelText: 'كلمة المرور',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            obscure = !obscure;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      error!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: loading ? null : login,
-                      child: Text(
-                        loading ? 'جارٍ الدخول...' : 'تسجيل الدخول',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: loading
-                          ? null
-                          : () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const RegisterPage(),
-                                ),
-                              );
-                            },
-                      child: const Text('إنشاء حساب جديد'),
-                    ),
+                  Text(
+                    error!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
                   ),
                 ],
-              ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: loading ? null : login,
+                    child: Text(
+                      loading ? 'جارٍ الدخول...' : 'تسجيل الدخول',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: loading
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterPage(),
+                              ),
+                            );
+                          },
+                    child: const Text('إنشاء حساب جديد'),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -431,7 +432,7 @@ class _RegisterPageState extends State<RegisterPage> {
       if (result.session == null) {
         setState(() {
           message =
-              'تم إنشاء الحساب. إذا كان تأكيد البريد مفعّلًا، افتح رسالة البريد ثم سجّل الدخول.';
+              'تم إنشاء الحساب. افتح رسالة التفعيل بالبريد ثم سجّل الدخول.';
           success = true;
         });
       } else {
@@ -439,14 +440,12 @@ class _RegisterPageState extends State<RegisterPage> {
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-
       setState(() {
         message = e.message;
         success = false;
       });
     } catch (_) {
       if (!mounted) return;
-
       setState(() {
         message = 'حدث خطأ في إنشاء الحساب';
         success = false;
@@ -462,87 +461,84 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('إنشاء حساب'),
-        ),
-        body: ListView(
-          padding: const EdgeInsets.all(18),
-          children: [
-            TextField(
-              controller: name,
-              decoration: const InputDecoration(
-                labelText: 'الاسم الكامل',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('إنشاء حساب'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          TextField(
+            controller: name,
+            decoration: const InputDecoration(
+              labelText: 'الاسم الكامل',
+              prefixIcon: Icon(Icons.person_outline),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'البريد الإلكتروني',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: email,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'البريد الإلكتروني',
+              prefixIcon: Icon(Icons.email_outlined),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'كلمة المرور',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: password,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'كلمة المرور',
+              prefixIcon: Icon(Icons.lock_outline),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: phone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'رقم الهاتف المصري',
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: phone,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'رقم الهاتف',
+              prefixIcon: Icon(Icons.phone_outlined),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: city,
-              decoration: const InputDecoration(
-                labelText: 'المحافظة / المدينة',
-                prefixIcon: Icon(Icons.location_city_outlined),
-              ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: city,
+            decoration: const InputDecoration(
+              labelText: 'المحافظة / المدينة',
+              prefixIcon: Icon(Icons.location_city_outlined),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: area,
-              decoration: const InputDecoration(
-                labelText: 'المنطقة',
-                prefixIcon: Icon(Icons.location_on_outlined),
-              ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: area,
+            decoration: const InputDecoration(
+              labelText: 'المنطقة',
+              prefixIcon: Icon(Icons.location_on_outlined),
             ),
-            if (message != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                message!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: success ? green : Colors.red,
-                ),
-              ),
-            ],
-            const SizedBox(height: 18),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                onPressed: loading ? null : register,
-                child: Text(
-                  loading ? 'جارٍ إنشاء الحساب...' : 'إنشاء الحساب',
-                ),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 14),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: success ? green : Colors.red,
               ),
             ),
           ],
-        ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: loading ? null : register,
+              child: Text(
+                loading ? 'جارٍ إنشاء الحساب...' : 'إنشاء الحساب',
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -561,10 +557,6 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int tab = 0;
-
-  final List<String> requests = [
-    'طلب تبادل Augmentin',
-  ];
 
   void open(Widget page) {
     Navigator.push(
@@ -586,51 +578,48 @@ class _AppShellState extends State<AppShell> {
       AddMedicinePage(
         onPublished: () => setState(() => tab = 0),
       ),
-      RequestsPage(
-        requests: requests,
-        open: open,
-      ),
+      RequestsPage(open: open),
       const AccountPage(),
     ];
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        body: pages[tab],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: tab,
-          onDestinationSelected: (index) {
-            setState(() {
-              tab = index;
-            });
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'الرئيسية',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.search),
-              label: 'البحث',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.add_circle_outline),
-              selectedIcon: Icon(Icons.add_circle),
-              label: 'إضافة',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long),
-              label: 'الطلبات',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'حسابي',
-            ),
-          ],
-        ),
+    return Scaffold(
+      body: IndexedStack(
+        index: tab,
+        children: pages,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: tab,
+        onDestinationSelected: (index) {
+          setState(() {
+            tab = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'الرئيسية',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.search),
+            label: 'البحث',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.add_circle_outline),
+            selectedIcon: Icon(Icons.add_circle),
+            label: 'إضافة',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long),
+            label: 'الطلبات',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'حسابي',
+          ),
+        ],
       ),
     );
   }
@@ -640,7 +629,7 @@ class _AppShellState extends State<AppShell> {
 // HOME
 // ============================================================
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   final VoidCallback onSearch;
   final VoidCallback onAdd;
   final VoidCallback onRequests;
@@ -655,120 +644,165 @@ class HomePage extends StatelessWidget {
   });
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  List<Medicine> _medicines = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMedicines();
+  }
+
+  Future<void> _fetchMedicines() async {
+    setState(() => _loading = true);
+    try {
+      final response = await supabase?.from('medicines').select().order('created_at', ascending: false);
+      if (response != null && mounted) {
+        setState(() {
+          _medicines = (response as List).map((e) => Medicine.fromJson(e)).toList();
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(18),
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'مرحبًا 👋',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: dark,
+      child: RefreshIndicator(
+        onRefresh: _fetchMedicines,
+        child: ListView(
+          padding: const EdgeInsets.all(18),
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'مرحبًا 👋',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: dark,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'شارك الفائض وابحث عما تحتاج',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-              IconButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('لا توجد إشعارات جديدة'),
+                    SizedBox(height: 4),
+                    Text(
+                      'شارك الفائض وابحث عما تحتاج',
+                      style: TextStyle(color: Colors.grey),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.notifications_none),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          GestureDetector(
-            onTap: onSearch,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFE2ECE8),
+                  ],
                 ),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.search, color: green),
-                  SizedBox(width: 10),
-                  Text(
-                    'ابحث عن دواء...',
-                    style: TextStyle(color: Colors.grey),
+                IconButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('لا توجد إشعارات جديدة'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_none),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            GestureDetector(
+              onTap: widget.onSearch,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFE2ECE8),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ActionCard(
-                  icon: Icons.add_box_outlined,
-                  title: 'إضافة دواء',
-                  subtitle: 'شارك دواء زائد',
-                  onTap: onAdd,
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.search, color: green),
+                    SizedBox(width: 10),
+                    Text(
+                      'ابحث عن دواء...',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ActionCard(
-                  icon: Icons.search,
-                  title: 'البحث',
-                  subtitle: 'ابحث عن دواء',
-                  onTap: onSearch,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ActionCard(
-            icon: Icons.receipt_long_outlined,
-            title: 'طلبات التبادل',
-            subtitle: 'تابع طلباتك',
-            onTap: onRequests,
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'أدوية متاحة الآن',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: dark,
             ),
-          ),
-          const SizedBox(height: 10),
-          ...medicines.map(
-            (medicine) => MedicineCard(
-              medicine: medicine,
-              onTap: () {
-                open(
-                  MedicineDetailsPage(
-                    medicine: medicine,
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ActionCard(
+                    icon: Icons.add_box_outlined,
+                    title: 'إضافة دواء',
+                    subtitle: 'شارك دواء زائد',
+                    onTap: widget.onAdd,
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ActionCard(
+                    icon: Icons.search,
+                    title: 'البحث',
+                    subtitle: 'ابحث عن دواء',
+                    onTap: widget.onSearch,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            ActionCard(
+              icon: Icons.receipt_long_outlined,
+              title: 'طلبات التبادل',
+              subtitle: 'تابع طلباتك',
+              onTap: widget.onRequests,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'أدوية متاحة الآن',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: dark,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (_loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_medicines.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text(
+                  'لا توجد أدوية مضافة حالياً',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              ..._medicines.map(
+                (medicine) => MedicineCard(
+                  medicine: medicine,
+                  onTap: () {
+                    widget.open(MedicineDetailsPage(medicine: medicine));
+                  },
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -819,17 +853,12 @@ class ActionCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
@@ -863,27 +892,34 @@ class MedicineCard extends StatelessWidget {
       elevation: 0,
       child: ListTile(
         onTap: onTap,
-        leading: const CircleAvatar(
-          backgroundColor: Color(0xFFE5F5EF),
-          child: Icon(
-            Icons.medication_outlined,
-            color: green,
-          ),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: medicine.imageUrl != null && medicine.imageUrl!.isNotEmpty
+              ? Image.network(
+                  medicine.imageUrl!,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const CircleAvatar(
+                    backgroundColor: Color(0xFFE5F5EF),
+                    child: Icon(Icons.medication_outlined, color: green),
+                  ),
+                )
+              : const CircleAvatar(
+                  backgroundColor: Color(0xFFE5F5EF),
+                  child: Icon(Icons.medication_outlined, color: green),
+                ),
         ),
         title: Text(
           '${medicine.name} ${medicine.strength}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           '${medicine.qty} • تنتهي ${medicine.expiry}\n${medicine.area}',
         ),
         isThreeLine: true,
         trailing: medicine.free
-            ? const Chip(
-                label: Text('مجاني'),
-              )
+            ? const Chip(label: Text('مجاني'))
             : const Icon(Icons.chevron_left),
       ),
     );
@@ -897,10 +933,7 @@ class MedicineCard extends StatelessWidget {
 class SearchPage extends StatefulWidget {
   final void Function(Widget) open;
 
-  const SearchPage({
-    super.key,
-    required this.open,
-  });
+  const SearchPage({super.key, required this.open});
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -908,6 +941,8 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final search = TextEditingController();
+  List<Medicine> _results = [];
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -915,18 +950,34 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
+  Future<void> _performSearch(String query) async {
+    setState(() => _loading = true);
+
+    try {
+      final builder = supabase?.from('medicines').select();
+      final response = query.trim().isEmpty
+          ? await builder
+          : await builder?.ilike('name', '%${query.trim()}%');
+
+      if (response != null && mounted) {
+        setState(() {
+          _results = (response as List).map((e) => Medicine.fromJson(e)).toList();
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _performSearch('');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final query = search.text.trim().toLowerCase();
-
-    final results = medicines.where((medicine) {
-      if (query.isEmpty) return true;
-
-      return medicine.name.toLowerCase().contains(query) ||
-          medicine.strength.toLowerCase().contains(query) ||
-          medicine.area.toLowerCase().contains(query);
-    }).toList();
-
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(18),
@@ -942,14 +993,16 @@ class _SearchPageState extends State<SearchPage> {
           const SizedBox(height: 14),
           TextField(
             controller: search,
-            onChanged: (_) => setState(() {}),
+            onChanged: _performSearch,
             decoration: const InputDecoration(
               hintText: 'اكتب اسم الدواء',
               prefixIcon: Icon(Icons.search),
             ),
           ),
           const SizedBox(height: 18),
-          if (results.isEmpty)
+          if (_loading)
+            const Center(child: CircularProgressIndicator())
+          else if (_results.isEmpty)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(30),
@@ -958,19 +1011,16 @@ class _SearchPageState extends State<SearchPage> {
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
+            )
+          else
+            ..._results.map(
+              (medicine) => MedicineCard(
+                medicine: medicine,
+                onTap: () {
+                  widget.open(MedicineDetailsPage(medicine: medicine));
+                },
+              ),
             ),
-          ...results.map(
-            (medicine) => MedicineCard(
-              medicine: medicine,
-              onTap: () {
-                widget.open(
-                  MedicineDetailsPage(
-                    medicine: medicine,
-                  ),
-                );
-              },
-            ),
-          ),
         ],
       ),
     );
@@ -984,25 +1034,28 @@ class _SearchPageState extends State<SearchPage> {
 class MedicineDetailsPage extends StatelessWidget {
   final Medicine medicine;
 
-  const MedicineDetailsPage({
-    super.key,
-    required this.medicine,
-  });
+  const MedicineDetailsPage({super.key, required this.medicine});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('تفاصيل الدواء'),
-      ),
+      appBar: AppBar(title: const Text('تفاصيل الدواء')),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          const Icon(
-            Icons.medication,
-            size: 90,
-            color: green,
-          ),
+          if (medicine.imageUrl != null && medicine.imageUrl!.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                medicine.imageUrl!,
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.medication, size: 90, color: green),
+              ),
+            )
+          else
+            const Icon(Icons.medication, size: 90, color: green),
           const SizedBox(height: 16),
           Center(
             child: Text(
@@ -1015,22 +1068,10 @@ class MedicineDetailsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          Info(
-            title: 'الكمية',
-            value: medicine.qty,
-          ),
-          Info(
-            title: 'تاريخ الانتهاء',
-            value: medicine.expiry,
-          ),
-          Info(
-            title: 'الموقع',
-            value: medicine.area,
-          ),
-          Info(
-            title: 'طريقة التبادل',
-            value: medicine.free ? 'مجاني' : 'تبادل',
-          ),
+          Info(title: 'الكمية', value: medicine.qty),
+          Info(title: 'تاريخ الانتهاء', value: medicine.expiry),
+          Info(title: 'الموقع', value: medicine.area),
+          Info(title: 'طريقة التبادل', value: medicine.free ? 'مجاني' : 'تبادل'),
           const SizedBox(height: 22),
           SizedBox(
             height: 52,
@@ -1039,9 +1080,7 @@ class MedicineDetailsPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ExchangeRequestPage(
-                      medicine: medicine,
-                    ),
+                    builder: (_) => ExchangeRequestPage(medicine: medicine),
                   ),
                 );
               },
@@ -1058,11 +1097,7 @@ class Info extends StatelessWidget {
   final String title;
   final String value;
 
-  const Info({
-    super.key,
-    required this.title,
-    required this.value,
-  });
+  const Info({super.key, required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1070,10 +1105,7 @@ class Info extends StatelessWidget {
       color: Colors.white,
       elevation: 0,
       child: ListTile(
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.grey),
-        ),
+        title: Text(title, style: const TextStyle(color: Colors.grey)),
         subtitle: Text(
           value,
           style: const TextStyle(
@@ -1094,10 +1126,7 @@ class Info extends StatelessWidget {
 class AddMedicinePage extends StatefulWidget {
   final VoidCallback onPublished;
 
-  const AddMedicinePage({
-    super.key,
-    required this.onPublished,
-  });
+  const AddMedicinePage({super.key, required this.onPublished});
 
   @override
   State<AddMedicinePage> createState() => _AddMedicinePageState();
@@ -1109,6 +1138,8 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
   final quantity = TextEditingController();
   final expiry = TextEditingController();
   final area = TextEditingController();
+  
+  XFile? _pickedXFile;
 
   @override
   void dispose() {
@@ -1118,6 +1149,41 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
     expiry.dispose();
     area.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (picked != null) {
+      setState(() {
+        _pickedXFile = picked;
+      });
+    }
+  }
+
+  Widget _buildImagePreview() {
+    if (_pickedXFile == null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.add_a_photo_outlined, color: green, size: 36),
+          SizedBox(height: 8),
+          Text('اضغط لإضافة صورة الدواء', style: TextStyle(color: Colors.grey)),
+        ],
+      );
+    }
+
+    if (kIsWeb) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.network(_pickedXFile!.path, fit: BoxFit.cover, width: double.infinity),
+      );
+    } else {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.file(File(_pickedXFile!.path), fit: BoxFit.cover, width: double.infinity),
+      );
+    }
   }
 
   @override
@@ -1135,30 +1201,28 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
             ),
           ),
           const SizedBox(height: 18),
-          AppField(
-            controller: name,
-            label: 'اسم الدواء',
+          GestureDetector(
+            onTap: _pickImage,
+            child: Container(
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2ECE8)),
+              ),
+              child: _buildImagePreview(),
+            ),
           ),
+          const SizedBox(height: 14),
+          AppField(controller: name, label: 'اسم الدواء'),
           const SizedBox(height: 10),
-          AppField(
-            controller: strength,
-            label: 'التركيز',
-          ),
+          AppField(controller: strength, label: 'التركيز'),
           const SizedBox(height: 10),
-          AppField(
-            controller: quantity,
-            label: 'الكمية',
-          ),
+          AppField(controller: quantity, label: 'الكمية'),
           const SizedBox(height: 10),
-          AppField(
-            controller: expiry,
-            label: 'تاريخ الانتهاء',
-          ),
+          AppField(controller: expiry, label: 'تاريخ الانتهاء'),
           const SizedBox(height: 10),
-          AppField(
-            controller: area,
-            label: 'المنطقة',
-          ),
+          AppField(controller: area, label: 'المنطقة'),
           const SizedBox(height: 20),
           SizedBox(
             height: 52,
@@ -1186,6 +1250,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
                       quantity: quantity.text.trim(),
                       expiry: expiry.text.trim(),
                       area: area.text.trim(),
+                      pickedXFile: _pickedXFile,
                       onPublished: widget.onPublished,
                     ),
                   ),
@@ -1200,4 +1265,397 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
   }
 }
 
-class
+// ============================================================
+// WIDGETS & REMAINING PAGES
+// ============================================================
+
+class AppField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+
+  const AppField({
+    super.key,
+    required this.controller,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+    );
+  }
+}
+
+class VerifyPage extends StatefulWidget {
+  final String name;
+  final String strength;
+  final String quantity;
+  final String expiry;
+  final String area;
+  final XFile? pickedXFile;
+  final VoidCallback onPublished;
+
+  const VerifyPage({
+    super.key,
+    required this.name,
+    required this.strength,
+    required this.quantity,
+    required this.expiry,
+    required this.area,
+    this.pickedXFile,
+    required this.onPublished,
+  });
+
+  @override
+  State<VerifyPage> createState() => _VerifyPageState();
+}
+
+class _VerifyPageState extends State<VerifyPage> {
+  bool loading = false;
+
+  Future<void> publish() async {
+    setState(() => loading = true);
+
+    try {
+      String? imageUrl;
+
+      if (widget.pickedXFile != null && supabase != null) {
+        final fileExt = widget.pickedXFile!.path.split('.').last;
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+
+        if (kIsWeb) {
+          final bytes = await widget.pickedXFile!.readAsBytes();
+          await supabase!.storage
+              .from('medicine_images')
+              .uploadBinary(fileName, bytes);
+        } else {
+          await supabase!.storage
+              .from('medicine_images')
+              .upload(fileName, File(widget.pickedXFile!.path));
+        }
+
+        imageUrl = supabase!.storage
+            .from('medicine_images')
+            .getPublicUrl(fileName);
+      }
+
+      if (supabase != null) {
+        await supabase!.from('medicines').insert({
+          'name': widget.name,
+          'strength': widget.strength,
+          'qty': widget.quantity,
+          'expiry': widget.expiry,
+          'area': widget.area,
+          'free': false,
+          'image_url': imageUrl,
+          'user_id': supabase!.auth.currentUser?.id,
+        });
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      widget.onPublished();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ أثناء النشر: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('مراجعة وتأكيد البيانات')),
+      body: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              color: Colors.white,
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    if (widget.pickedXFile != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: kIsWeb
+                            ? Image.network(
+                                widget.pickedXFile!.path,
+                                height: 120,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.file(
+                                File(widget.pickedXFile!.path),
+                                height: 120,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Info(title: 'اسم الدواء', value: widget.name),
+                    Info(title: 'التركيز', value: widget.strength),
+                    Info(title: 'الكمية', value: widget.quantity),
+                    Info(title: 'تاريخ الانتهاء', value: widget.expiry),
+                    Info(title: 'المنطقة', value: widget.area),
+                  ],
+                ),
+              ),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton(
+                onPressed: loading ? null : publish,
+                child: Text(loading ? 'جارٍ النشر والرفع...' : 'نشر الدواء الآن'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ExchangeRequestPage extends StatefulWidget {
+  final Medicine medicine;
+
+  const ExchangeRequestPage({super.key, required this.medicine});
+
+  @override
+  State<ExchangeRequestPage> createState() => _ExchangeRequestPageState();
+}
+
+class _ExchangeRequestPageState extends State<ExchangeRequestPage> {
+  final noteController = TextEditingController();
+  bool loading = false;
+
+  @override
+  void dispose() {
+    noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> sendRequest() async {
+    setState(() => loading = true);
+
+    try {
+      if (supabase != null) {
+        await supabase!.from('requests').insert({
+          'medicine_id': widget.medicine.id,
+          'medicine_name': widget.medicine.name,
+          'note': noteController.text.trim(),
+          'user_id': supabase!.auth.currentUser?.id,
+          'status': 'قيد الانتظار',
+        });
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إرسال طلب التبادل بنجاح')),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ أثناء الإرسال: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('إرسال طلب تبادل')),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          Text(
+            'طلب الحصول على: ${widget.medicine.name} ${widget.medicine.strength}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: dark,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: noteController,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              hintText: 'اكتب ملاحظة أو تفاصيل التواصل الخاصة بك...',
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: loading ? null : sendRequest,
+              child: Text(loading ? 'جارٍ الإرسال...' : 'تأكيد وإرسال'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RequestsPage extends StatefulWidget {
+  final void Function(Widget) open;
+
+  const RequestsPage({super.key, required this.open});
+
+  @override
+  State<RequestsPage> createState() => _RequestsPageState();
+}
+
+class _RequestsPageState extends State<RequestsPage> {
+  List<Map<String, dynamic>> _requests = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRequests();
+  }
+
+  Future<void> _fetchRequests() async {
+    setState(() => _loading = true);
+    final userId = supabase?.auth.currentUser?.id;
+
+    try {
+      final response = await supabase
+          ?.from('requests')
+          .select()
+          .eq('user_id', userId ?? '')
+          .order('created_at', ascending: false);
+
+      if (response != null && mounted) {
+        setState(() {
+          _requests = List<Map<String, dynamic>>.from(response);
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: _fetchRequests,
+        child: ListView(
+          padding: const EdgeInsets.all(18),
+          children: [
+            const Text(
+              'طلبات التبادل',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: dark,
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_requests.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(30),
+                  child: Text(
+                    'لا توجد طلبات حالية',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              )
+            else
+              ..._requests.map((req) {
+                return Card(
+                  color: Colors.white,
+                  elevation: 0,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    leading: const Icon(Icons.swap_horiz, color: green),
+                    title: Text(req['medicine_name'] ?? 'طلب دواء'),
+                    subtitle: Text('الحالة: ${req['status'] ?? 'قيد الانتظار'}'),
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AccountPage extends StatelessWidget {
+  const AccountPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = supabase?.auth.currentUser;
+
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          const Text(
+            'حسابي',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: dark,
+            ),
+          ),
+          const SizedBox(height: 20),
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: green.withOpacity(0.1),
+            child: const Icon(Icons.person, size: 40, color: green),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              user?.email ?? 'مستخدم دوائي',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+          Card(
+            color: Colors.white,
+            elevation: 0,
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text(
+                'تسجيل الخروج',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () async {
+                if (supabase != null) {
+                  await supabase!.auth.signOut();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
